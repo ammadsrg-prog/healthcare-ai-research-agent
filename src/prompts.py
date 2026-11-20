@@ -73,8 +73,9 @@ Look for patient groups, interventions, comparisons or outcomes that none of the
 
 For each gap, also write a search query that would find papers on that exact gap, so we can check whether other researchers already studied it. The query must:
 - use 2 or 3 key concepts joined by AND, never OR or NOT
-- put concepts of more than one word in double quotes, for example: "mobile app" AND diabetes AND "older adults"
+- make each concept one or two words; put two-word concepts in double quotes, for example: "mobile app" AND diabetes AND "older adults"
 - use short, common medical words that authors write in titles and abstracts, not long or unusual phrases
+- never use words that describe the kind of study, like comparison, effectiveness, impact or outcomes
 
 Reply with only a JSON list and no other text, in exactly this shape:
 [

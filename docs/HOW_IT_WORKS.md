@@ -434,10 +434,31 @@ search box ──► [1 PII check] ──► OpenAlex ──► papers ──►
   in `guardContent`. Result: 0 of 27 false alarms, and every test attack is still blocked.
 - **Cost:** about $0.0016 per summary. Creating it and keeping it unused is free.
 
+### `src/trials_client.py`: clinical trials 🧪
+- A paper is finished research. An **active clinical trial** is research happening **now**.
+- For each gap, `count_active_trials` asks the free ClinicalTrials.gov API (v2) for trials that are
+  recruiting, not yet recruiting, active or enrolling by invitation.
+- `study_to_trial` copies the ID (like `NCT05041907`), title, status, start date and link into a `Trial`.
+- In `check_gaps`, the trials check is wrapped in `try / except`: if the site is down, `trial_count` is `None`
+  ("couldn't check") and the rest of the gap check still works.
+- **Limit:** it searches all of a trial's text, so some examples are only loosely related. The app says
+  "may be studying" and shows links to check.
+
+### `clean_search` in `gap_checker.py`: rules checked in code 🔧
+- The prompt asks for 2 or 3 short concepts, but the AI sometimes wrote 4, used OR, or quoted long phrases
+  like `"diabetes mobile app"`, which found 0 papers and made every gap look "real".
+- `clean_search` splits at AND, keeps the first choice of an OR, drops NOT and vague words
+  (comparison, effectiveness…), keeps at most 3 concepts, and removes quotes from phrases of 3+ words,
+  **except** names with numbers like `"type 1 diabetes"` (otherwise they match type 2 papers).
+- The AI's original is kept in `gap["ai_search"]`, and the app shows it when it was repaired.
+- **Lesson:** a rule in a prompt is a request; a check in code is a guarantee.
+
 ### `tests/`: automated tests 🧪
-- 48 tests with **pytest**: `python -m pytest`.
+- 61 tests with **pytest**: `python -m pytest`.
 - `assert` means "this must be true". `@pytest.mark.parametrize` runs one test with many examples.
 - `tmp_path` and `monkeypatch` make tests use temporary files and settings.
+- **Mocking:** `monkeypatch.setattr(gap_checker, "count_active_trials", site_down)` swaps a real internet call
+  for a fake one, to test "what if ClinicalTrials.gov is down?" without the internet.
 - Tests check **both** sides: attacks that must be caught, **and** normal medical text that must not be blocked.
 - No test calls AWS or OpenAlex, so they're free and fast.
 

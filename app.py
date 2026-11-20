@@ -239,7 +239,8 @@ with compare_tab:
 
 with gaps_tab:
     st.caption(
-        "The AI suggests gaps, then we search OpenAlex to see if papers already cover them. "
+        "The AI suggests gaps, then we search OpenAlex to see if papers already cover them, "
+        "and ClinicalTrials.gov to see if trials are studying them right now. "
         "This is a strong hint, not proof: papers that use different words can be missed."
     )
 
@@ -249,10 +250,26 @@ with gaps_tab:
                 st.markdown(f"#### {gap['verdict']}")
                 st.markdown(gap["gap"])
                 st.caption(f"🔎 Searched for: `{gap['search']}`  ·  Healthcare papers found: **{gap['count']}**")
+                # Show when our code repaired the AI's search, so the user can see exactly what changed
+                if gap.get("ai_search") and gap["ai_search"] != gap["search"]:
+                    st.caption(f"🔧 Repaired from the AI's search, which broke our rules: `{gap['ai_search']}`")
                 if gap["examples"]:
                     with st.expander("Example papers"):
                         for example in gap["examples"]:
                             st.markdown(f"- [{example.title}]({example.url}) ({example.year or 'year unknown'})")
+
+                # Research happening now. .get() is used because gaps checked before this feature have no trials.
+                trial_count = gap.get("trial_count")
+                if trial_count is None:
+                    st.caption("🧪 Could not check ClinicalTrials.gov this time.")
+                elif trial_count == 0:
+                    st.caption("🧪 No active clinical trials found: nobody seems to be testing this right now.")
+                else:
+                    st.markdown(f"🧪 **{trial_count} active clinical trial(s)** may be studying this right now.")
+                    with st.expander("Example trials (check that they really match)"):
+                        for trial in gap["trials"]:
+                            started = f", started {trial.start_date}" if trial.start_date else ""
+                            st.markdown(f"- [{trial.title}]({trial.url}) ({trial.nct_id}: {trial.status}{started})")
     elif len(summarized) < 2:
         st.info("Summarize at least 2 papers in the Papers tab to check for gaps.")
     elif st.button(

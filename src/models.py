@@ -17,3 +17,14 @@ class Paper:
     citation_count: int
     journal: str = ""  # Where it was published. The default "" means "unknown".
     is_retracted: bool = False  # True if the paper was officially withdrawn (for errors or fraud)
+
+
+@dataclass
+class Trial:
+    """One clinical trial from ClinicalTrials.gov: a study that is testing a treatment on people."""
+
+    nct_id: str  # The trial's official ID, like "NCT05041907"
+    title: str
+    status: str  # Like "Recruiting" (looking for patients now)
+    start_date: str  # Like "2024-07" or "" if unknown
+    url: str

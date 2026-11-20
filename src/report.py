@@ -62,9 +62,10 @@ def build_report(
 
     if gaps:
         lines += [
-            "## 3. Research gaps (checked against OpenAlex)",
+            "## 3. Research gaps (checked against OpenAlex and ClinicalTrials.gov)",
             "",
-            "The AI suggested each gap, then we counted the healthcare papers on it in OpenAlex. "
+            "The AI suggested each gap, then we counted the healthcare papers on it in OpenAlex "
+            "and the active clinical trials on it in ClinicalTrials.gov. "
             "The count is a strong hint, not proof: papers using different words can be missed.",
             "",
         ]
@@ -77,6 +78,11 @@ def build_report(
             ]
             for example in gap["examples"]:
                 lines.append(f"- Example: {format_reference(example)}")
+            trial_count = gap.get("trial_count")
+            if trial_count is not None:
+                lines.append(f"- Active clinical trials (ClinicalTrials.gov): {trial_count}")
+                for trial in gap.get("trials", []):
+                    lines.append(f"- Trial: {trial.title} ({trial.nct_id}, {trial.status}). {trial.url}")
             lines.append("")
 
     lines += ["## References", ""]
