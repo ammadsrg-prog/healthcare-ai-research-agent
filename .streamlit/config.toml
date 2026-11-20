@@ -1,0 +1,11 @@
+# The look of the app: colours, font and rounded corners.
+# Streamlit reads this file automatically when the app starts.
+
+[theme]
+base = "light"
+primaryColor = "#0F766E"              # Teal, a calm "healthcare" colour, used for buttons and links
+backgroundColor = "#F8FAFC"           # Very light grey page background
+secondaryBackgroundColor = "#E6F2F1"  # Light teal, for the sidebar and input boxes
+textColor = "#0F172A"                 # Dark navy text, softer than pure black
+font = "sans-serif"
+baseRadius = "0.75rem"                # Rounded corners on cards and buttons
