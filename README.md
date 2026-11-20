@@ -6,9 +6,29 @@ and then **checks each gap against real research** before trusting it.
 
 Built with **Python**, **Streamlit**, **Amazon Bedrock** (Converse API and Guardrails) and the **OpenAlex** API.
 
-<!-- Screenshots: save images in docs/images/ and uncomment the line below.
-![The app](docs/images/app.png)
--->
+![The Healthcare AI Research Agent](docs/images/overview.png)
+
+---
+
+## 📸 Screenshots
+
+**PICO summary of a real paper**, grounded in the abstract only:
+
+![PICO summary](docs/images/summary.png)
+
+**Research gaps checked against real data**: the verdict comes from counting published papers in OpenAlex,
+🧪 shows active trials from ClinicalTrials.gov, and 🔧 shows when the AI's search was repaired by code:
+
+![Research gaps](docs/images/gaps.png)
+
+**Retraction alarm**: this withdrawn COVID-19 study shows up in a normal search and has been cited
+over 1,400 times. The agent flags it and refuses to summarize it:
+
+![Retraction alarm](docs/images/retraction.png)
+
+**Audit log**: every AI call, its tokens and stop reason, the guardrail status and every safety block:
+
+![Audit log](docs/images/audit.png)
 
 ---
 
