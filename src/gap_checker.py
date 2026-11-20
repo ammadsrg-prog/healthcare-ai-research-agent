@@ -34,11 +34,12 @@ def read_gaps(answer: str) -> list[dict]:
 
 def suggest_gaps(papers: list[Paper], summaries: list[str]) -> list[dict]:
     """Ask the AI to suggest research gaps, each with a search query to check it."""
-    prompt = GAP_PROMPT.format(papers=number_papers(papers, summaries))
+    papers_text = number_papers(papers, summaries)
+    prompt = GAP_PROMPT.format(papers=papers_text)
 
     # Same pattern as the summaries: check the answer, and try once more if it's broken
     for attempt in range(2):
-        gaps = read_gaps(ask_ai(prompt, max_tokens=1000))
+        gaps = read_gaps(ask_ai(prompt, max_tokens=1000, task="suggest gaps", untrusted=papers_text))
         if gaps:
             return gaps
 

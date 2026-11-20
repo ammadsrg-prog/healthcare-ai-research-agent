@@ -6,11 +6,16 @@ import requests
 import streamlit as st
 from botocore.exceptions import BotoCoreError, ClientError
 
+from config.settings import BEDROCK_GUARDRAIL_ID
 from src.analyzer import compare_papers
+from src.bedrock_client import GuardrailBlockedError
+from src.audit_log import log_event, read_events
 from src.gap_checker import check_gaps
 from src.openalex_client import search_papers
+from src.pii import find_pii, redact_pii
 from src.report import build_report
-from src.summarizer import summarize_paper
+from src.injection import check_paper
+from src.summarizer import RetractedPaperError, UnsafePaperError, summarize_paper
 
 # The browser tab's title and icon, and a wide page that uses the whole screen.
 # This must be the first Streamlit command in the file.
@@ -53,6 +58,11 @@ with st.sidebar:
         "Searches healthcare research only. A tool for studying research, not medical advice. "
         "AI summaries can contain mistakes, so check the original paper."
     )
+    st.caption("🛡️ Personal details (names, phone numbers, IDs, dates of birth) are blocked before searching.")
+    st.caption("🛡️ Papers that contain hidden orders for the AI (prompt injection) are never sent to the AI.")
+    st.caption("🚩 Retracted (withdrawn) papers are flagged and never summarized.")
+    if BEDROCK_GUARDRAIL_ID:
+        st.caption("🛡️ Amazon Bedrock Guardrails is on: it checks the papers and every AI answer.")
     st.caption("Papers: OpenAlex · AI: Amazon Bedrock")
 
 # Streamlit re-runs this whole file after every click, so we keep
@@ -62,6 +72,9 @@ if "papers" not in st.session_state:
     st.session_state.summaries = {}
 if "topic" not in st.session_state:
     st.session_state.topic = ""
+if "logged_warnings" not in st.session_state:
+    # Safety blocks already written to the audit log, like ("retraction", 3), so each is logged only once
+    st.session_state.logged_warnings = set()
 if "comparison" not in st.session_state:
     st.session_state.comparison = None
 if "gaps" not in st.session_state:
@@ -78,23 +91,34 @@ with st.form("search_form", border=True):
     searched = st.form_submit_button("Search papers", icon=":material/search:", type="primary")
 
 if searched and topic:
+    # Safety check: stop before anything leaves this computer if the topic has personal details
+    pii_found = find_pii(topic)
+    if pii_found:
+        log_event("pii_blocked", kinds=pii_found)  # Only the kinds are saved, never the personal details
+        st.error(
+            "Your topic seems to contain personal information: " + ", ".join(pii_found) + ". "
+            "Nothing was sent. Please remove patient details and search for the medical topic only, "
+            "for example \"type 2 diabetes in older adults\".",
+            icon=":material/shield:",
+        )
+        st.stop()
+
     try:
         with st.spinner("Searching OpenAlex..."):
             st.session_state.papers = search_papers(topic, limit)
+        log_event("search", topic=redact_pii(topic), papers_found=len(st.session_state.papers))
         st.session_state.topic = topic  # Saved for the report, because the text box can change later
+        st.session_state.logged_warnings = set()
         st.session_state.summaries = {}
         st.session_state.comparison = None
         st.session_state.gaps = None
-    except requests.RequestException:
+    except requests.RequestException as error:
+        log_event("search_error", error=type(error).__name__)
         st.error("Could not reach OpenAlex. Please wait a moment and try again.")
         st.stop()
 
     if not st.session_state.papers:
         st.info("No papers found. Try different words.")
-
-if not st.session_state.papers:
-    st.info("Type a healthcare topic above and click **Search papers** to begin.", icon=":material/lightbulb:")
-    st.stop()  # Nothing else to show yet
 
 summarized = sorted(st.session_state.summaries)
 
@@ -105,20 +129,30 @@ summaries_metric.metric("Summarized", len(summarized))
 gaps_metric.metric("Gaps checked", len(st.session_state.gaps) if st.session_state.gaps else 0)
 
 # Tabs keep the page tidy: one tab for each job.
-papers_tab, compare_tab, gaps_tab, report_tab = st.tabs(
+papers_tab, compare_tab, gaps_tab, report_tab, audit_tab = st.tabs(
     [
         ":material/article: Papers",
         ":material/compare_arrows: Compare",
         ":material/troubleshoot: Research gaps",
         ":material/description: Report",
+        ":material/receipt_long: Audit log",
     ]
 )
 
 with papers_tab:
+    if not st.session_state.papers:
+        st.info("Type a healthcare topic above and click **Search papers** to begin.", icon=":material/lightbulb:")
+
     for index, paper in enumerate(st.session_state.papers):
         # A bordered container draws each paper as a card
         with st.container(border=True):
             st.subheader(paper.title)
+            if paper.is_retracted:
+                st.error(
+                    "**RETRACTED.** The journal officially withdrew this paper, for example because of errors "
+                    "or fraud. Its findings should not be trusted.",
+                    icon=":material/flag:",
+                )
 
             # Show only the first 3 authors, so long author lists don't fill the card
             authors = ", ".join(paper.authors[:3]) or "Unknown authors"
@@ -139,8 +173,27 @@ with papers_tab:
             if paper.url:
                 open_column.link_button("Open paper", paper.url, icon=":material/open_in_new:")
 
+            injection_found = check_paper(paper)
+
             if index in st.session_state.summaries:
                 pass  # Already summarized, so no button
+            elif paper.is_retracted:
+                # Safety: the AI would present withdrawn findings as facts, so retracted papers are never summarized
+                summarize_column.caption("Not summarized, because it was retracted.")
+                if ("retraction", index) not in st.session_state.logged_warnings:
+                    st.session_state.logged_warnings.add(("retraction", index))
+                    log_event("retraction_blocked", paper=paper.title[:80])
+            elif injection_found:
+                # Safety: this paper's text tries to give orders to an AI, so it is never sent to the AI
+                st.warning(
+                    "Not sent to the AI: this paper's text looks like a prompt-injection attack ("
+                    + ", ".join(injection_found) + "). You can still open and read the paper yourself.",
+                    icon=":material/gpp_bad:",
+                )
+                # Log it only once per search, because Streamlit re-runs this code on every click
+                if ("injection", index) not in st.session_state.logged_warnings:
+                    st.session_state.logged_warnings.add(("injection", index))
+                    log_event("injection_blocked", paper=paper.title[:80], rules=injection_found)
             elif not paper.abstract:
                 summarize_column.caption("No abstract to summarize.")
             elif summarize_column.button("Summarize", key=f"summarize_{index}", icon=":material/auto_awesome:"):
@@ -153,6 +206,12 @@ with papers_tab:
                     st.rerun()
                 except (ClientError, BotoCoreError):
                     st.error("Could not reach the AI. Please wait a moment and try again.")
+                except GuardrailBlockedError as reasons:
+                    st.error(f"Blocked by the AWS safety guardrail ({reasons}).", icon=":material/shield:")
+                except RetractedPaperError:
+                    st.error("This paper was not sent to the AI because it was retracted.")
+                except UnsafePaperError:
+                    st.error("This paper was not sent to the AI because it looks like a prompt-injection attack.")
                 except ValueError:
                     st.error("The AI's answer was incomplete. Please click Summarize again.")
 
@@ -173,6 +232,8 @@ with compare_tab:
             st.rerun()
         except (ClientError, BotoCoreError):
             st.error("Could not reach the AI. Please wait a moment and try again.")
+        except GuardrailBlockedError as reasons:
+            st.error(f"Blocked by the AWS safety guardrail ({reasons}).", icon=":material/shield:")
         except ValueError:
             st.error("The AI's answer was incomplete. Please click Compare again.")
 
@@ -208,6 +269,8 @@ with gaps_tab:
             st.error("Could not reach the AI. Please wait a moment and try again.")
         except requests.RequestException:
             st.error("Could not reach OpenAlex to check the gaps. Please wait a moment and try again.")
+        except GuardrailBlockedError as reasons:
+            st.error(f"Blocked by the AWS safety guardrail ({reasons}).", icon=":material/shield:")
         except ValueError:
             st.error("The AI's answer could not be read. Please click the button again.")
 
@@ -241,3 +304,23 @@ with report_tab:
 
         with st.container(border=True):
             st.markdown(report)  # A preview of the report on the page
+
+with audit_tab:
+    st.caption(
+        "A record of every search, AI call and safety block. Prompts, abstracts and AI answers are never saved, "
+        "only facts about them, and personal details are removed from topics."
+    )
+    events = read_events()
+
+    if not events:
+        st.info("Nothing logged yet. Search for a topic to see the first entries.")
+    else:
+        ai_calls = [e for e in events if e["event"] == "ai_call"]
+        calls_metric, tokens_metric, blocked_metric, errors_metric = st.columns(4)
+        calls_metric.metric("AI calls", len(ai_calls))
+        # sum(...) adds up the tokens of every AI call
+        tokens_metric.metric("Tokens used", sum(e["input_tokens"] + e["output_tokens"] for e in ai_calls))
+        blocked_metric.metric("Safety blocks", sum(e["event"].endswith("_blocked") for e in events))
+        errors_metric.metric("Errors", sum(e["event"].endswith("_error") for e in events))
+        st.caption(f"Showing the newest {len(events)} events. The full log is saved in logs/audit.jsonl.")
+        st.dataframe(events, width="stretch", hide_index=True)

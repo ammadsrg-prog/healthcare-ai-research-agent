@@ -20,12 +20,13 @@ def number_papers(papers: list[Paper], summaries: list[str]) -> str:
 
 def compare_papers(papers: list[Paper], summaries: list[str]) -> str:
     """Ask the AI to compare papers, using the summary written for each one."""
-    prompt = COMPARISON_PROMPT.format(papers=number_papers(papers, summaries))
+    papers_text = number_papers(papers, summaries)
+    prompt = COMPARISON_PROMPT.format(papers=papers_text)
 
     # Like the summaries, we check the answer reached the last heading
     # and try once more before giving up.
     for attempt in range(2):
-        comparison = ask_ai(prompt, max_tokens=2000)
+        comparison = ask_ai(prompt, max_tokens=2000, task="compare", untrusted=papers_text)
         if "Research gaps" in comparison:
             return comparison
 

@@ -16,3 +16,4 @@ class Paper:
     url: str
     citation_count: int
     journal: str = ""  # Where it was published. The default "" means "unknown".
+    is_retracted: bool = False  # True if the paper was officially withdrawn (for errors or fraud)

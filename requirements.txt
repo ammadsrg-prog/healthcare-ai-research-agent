@@ -2,7 +2,7 @@
 # Install them all with:  pip install -r requirements.txt
 
 # Builds the web interface (buttons, search box, results)
-streamlit>=1.44
+streamlit>=1.50
 
 # Makes HTTP requests to the OpenAlex API
 requests>=2.32

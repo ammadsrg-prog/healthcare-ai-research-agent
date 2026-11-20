@@ -24,6 +24,8 @@ def format_reference(paper: Paper) -> str:
         reference += f" *{paper.journal}*."  # Journal names are written in italics
     if paper.url:
         reference += f" {paper.url}"
+    if paper.is_retracted:
+        reference = "**[RETRACTED]** " + reference  # A warning, so nobody cites it as valid evidence
     return reference
 
 

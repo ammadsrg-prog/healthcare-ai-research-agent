@@ -60,6 +60,8 @@ def work_to_paper(work: dict) -> Paper:
         url=work.get("doi") or work.get("id") or "",
         citation_count=work.get("cited_by_count", 0),
         journal=source.get("display_name") or "",
+        # OpenAlex marks papers that journals have withdrawn. We must never trust these.
+        is_retracted=bool(work.get("is_retracted")),
     )
 
 
