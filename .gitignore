@@ -16,6 +16,9 @@ __pycache__/
 # Saved API responses (temporary, can be regenerated)
 data/cache/
 
+# The audit log stays on this computer
+logs/
+
 # Jupyter notebook autosave files
 .ipynb_checkpoints/
 
