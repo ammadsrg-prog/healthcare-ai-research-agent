@@ -1,0 +1,23 @@
+# Secrets - never upload these
+.env
+.env.*
+!.env.example
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Virtual environment (can be recreated from requirements.txt)
+.venv/
+
+# Python's automatically generated cache files
+__pycache__/
+*.pyc
+
+# Saved API responses (temporary, can be regenerated)
+data/cache/
+
+# Jupyter notebook autosave files
+.ipynb_checkpoints/
+
+# Test cache
+.pytest_cache/
