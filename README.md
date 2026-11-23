@@ -56,7 +56,7 @@ AI call in a **safety and governance layer**.
 
 Several independent walls ("defence in depth"), so if one misses something, the next one catches it.
 The full explanation, with the principles behind each control and how they are tested, is in
-**[docs/AI_GOVERNANCE.md](docs/AI_GOVERNANCE.md)**.
+**[AI_GOVERNANCE.md](AI_GOVERNANCE.md)**.
 
 | Wall | What it does | Where |
 |---|---|---|
@@ -90,7 +90,7 @@ brought false alarms to **0 of 27**, while still blocking every test attack, inc
 5. **Report**: Python puts everything together with a reference list. No AI, so it's free.
 
 The full study guide, with every file explained, is in [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
-How AI governance is built into the code is explained in [docs/AI_GOVERNANCE.md](docs/AI_GOVERNANCE.md).
+How AI governance is built into the code is explained in [AI_GOVERNANCE.md](AI_GOVERNANCE.md).
 
 ---
 
@@ -198,7 +198,7 @@ scripts/create_guardrail.py  Creates the Bedrock Guardrail (infrastructure as co
 tests/                  Automated tests (pytest)
 .streamlit/config.toml  The app's colours and theme
 docs/HOW_IT_WORKS.md    Full study guide
-docs/AI_GOVERNANCE.md   How privacy, security, safety and accountability are built in
+AI_GOVERNANCE.md        How privacy, security, safety and accountability are built in
 ```
 
 ---
