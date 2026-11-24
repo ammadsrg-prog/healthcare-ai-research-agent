@@ -58,6 +58,9 @@ Several independent walls ("defence in depth"), so if one misses something, the 
 The full explanation, with the principles behind each control and how they are tested, is in
 **[AI_GOVERNANCE.md](AI_GOVERNANCE.md)**.
 
+📋 A formal **[AI Governance Assessment](docs/GOVERNANCE_ASSESSMENT.md)** ([PDF](docs/GOVERNANCE_ASSESSMENT.pdf)) covers
+the system's EU AI Act risk category, a risk register, the controls I would add next, and a test plan.
+
 | Wall | What it does | Where |
 |---|---|---|
 | 🔐 **PII protection** | Blocks emails, phone numbers, dates of birth, ID numbers and titled names in the search box **before anything leaves the computer** | `src/pii.py` |
@@ -199,6 +202,7 @@ tests/                  Automated tests (pytest)
 .streamlit/config.toml  The app's colours and theme
 docs/HOW_IT_WORKS.md    Full study guide
 AI_GOVERNANCE.md        How privacy, security, safety and accountability are built in
+docs/GOVERNANCE_ASSESSMENT.md  EU AI Act classification, risk register, controls to add, test plan
 ```
 
 ---
